@@ -40,12 +40,12 @@ snp <- read_csv("fivethirtyeight_datasets/snp.csv") %>%
 head(pols)
 colnames(pols)
 
-#Clean unemployement 
+#Clean unemployment 
 unemployment <- read_csv("fivethirtyeight_datasets/unemployment.csv") %>%
   pivot_longer(
     Jan:Dec,
     names_to = "month",
-    values_to = "unemployment"
+    values_to = "unemployment"           #Pivot longer made months into rows
   ) %>%
   mutate(
     month = match(month, month.abb),     #convert abbrev to numbers
@@ -56,6 +56,21 @@ unemployment <- read_csv("fivethirtyeight_datasets/unemployment.csv") %>%
 head(unemployment)
 tail(unemployment)
 colnames(unemployment)
+
+#Fix year column in unemployment 
+unemployment <- unemployment %>%
+  rename(year = Year)
+
+#Merge datasets together
+merged_data <- pols %>%
+  left_join(snp, by = c("year", "month")) %>%
+  left_join(unemployment, by = c("year", "month"))
+
+#Check merged data 
+dim(merged_data)
+colnames(merged_data)
+head(merged_data)
+
 
 ```
 
