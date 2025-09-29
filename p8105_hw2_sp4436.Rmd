@@ -1,0 +1,62 @@
+---
+title: "p8105_hw2_sp4436"
+author: "Sukhman Parhar"
+date: "2025-09-29"
+output: github_document
+---
+
+```{r Problem 1}
+#Load Packages 
+library(tidyverse)
+
+#Import and clean pols-month
+pols <- read_csv("fivethirtyeight_datasets/pols-month.csv") %>%
+  separate(mon, into = c("year", "month", "day"), sep = "-") %>%
+  mutate(
+    year = as.integer(year),
+    month = as.integer(month),
+    month = month.name[month],   # turn number into month name
+    president = if_else(prez_gop == 1, "gop", "dem")
+  ) %>%
+  select(-prez_dem, -prez_gop, -day)
+
+#Check to see if it worked 
+head(pols)
+colnames(pols)
+unique(pols$president)
+
+#Clean snp
+snp <- read_csv("fivethirtyeight_datasets/snp.csv") %>%
+  separate(date, into = c("month", "day", "year"), sep = "/") %>%
+  mutate(
+    year = as.integer(year),
+    year = if_else(year > 20, 1900 + year, 2000 + year),
+    month = as.integer(month),
+    month = month.name[month]
+  ) %>%
+  select(year, month, close)
+
+#Check to see if it worked 
+head(pols)
+colnames(pols)
+
+#Clean unemployement 
+unemployment <- read_csv("fivethirtyeight_datasets/unemployment.csv") %>%
+  pivot_longer(
+    Jan:Dec,
+    names_to = "month",
+    values_to = "unemployment"
+  ) %>%
+  mutate(
+    month = match(month, month.abb),     #convert abbrev to numbers
+    month = month.name[month]            #turn into full month name
+  )
+
+#See if it worked 
+head(unemployment)
+tail(unemployment)
+colnames(unemployment)
+
+```
+
+
