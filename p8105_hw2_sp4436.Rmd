@@ -8,6 +8,7 @@ output: github_document
 ```{r Problem 1}
 #Load Packages 
 library(tidyverse)
+library(dplyr)
 
 #Import and clean pols-month
 pols <- read_csv("fivethirtyeight_datasets/pols-month.csv") %>%
@@ -88,7 +89,7 @@ library(janitor)
 
 #Clean Mr trash
 mr_trash <- read_excel(
-  "202409 Trash Wheel Collection Data.xlsx",
+  "202509 Trash Wheel Collection Data.xlsx",
   sheet = "Mr. Trash Wheel",
   skip = 1
 ) %>%
@@ -96,13 +97,14 @@ mr_trash <- read_excel(
   drop_na(dumpster) %>%
   select(-starts_with("...")) %>%   # remove extra empty columns
   mutate(
+    year = as.integer(year),
     sports_balls = as.integer(round(sports_balls, 0)), 
     wheel = "Mr. Trash Wheel"
   )
 
 # Clean Professor Trash Wheel
 prof_trash <- read_excel(
-  "202409 Trash Wheel Collection Data.xlsx",
+  "202509 Trash Wheel Collection Data.xlsx",
   sheet = "Professor Trash Wheel",
   skip = 1
 ) %>%
@@ -110,23 +112,50 @@ prof_trash <- read_excel(
   drop_na(dumpster) %>%
   select(-starts_with("...")) %>%
   mutate(
-    wheel = "Professor Trash Wheel"
+    wheel = "Professor Trash Wheel",
+    year = as.integer(year)
   )
 
 # Clean Gwynnda Trash Wheel
 gwynnda_trash <- read_excel(
-  "202409 Trash Wheel Collection Data.xlsx",
-  sheet = "Gwynnda Trash Wheel",
+  "202509 Trash Wheel Collection Data.xlsx",
+  sheet = "Gwynns Falls Trash Wheel",
   skip = 1
 ) %>%
   clean_names() %>%
   drop_na(dumpster) %>%
   select(-starts_with("...")) %>%
   mutate(
-    wheel = "Gwynnda Trash Wheel"
+    wheel = "Gwynnda Trash Wheel",
+    year = as.integer(year)
   )
 
+#Combine into one dataset
+trash_wheel <- bind_rows(mr_trash, prof_trash, gwynnda_trash)
 
+#Check to see if the combine worked
+dim(trash_wheel)
+colnames(trash_wheel)
+head(trash_wheel)
+
+table(trash_wheel$wheel)
 
 ```
 
+The combined Trash Wheel dataset contains `r nrow(trash_wheel)` observations and `r ncol(trash_wheel)` variables. It spans from `r min(trash_wheel$year, na.rm = TRUE)` to `r max(trash_wheel$year, na.rm = TRUE)`. Key variables include `weight_tons`, `plastic_bottles`, `cigarette_butts`, and `homes_powered`, as well as the `wheel` variable that identifies whether the trash was collected by Mr., Professor, or Gwynnda.
+
+```{r Total weight of trash collected by Professor Trash Wheel}
+prof_total_weight <- trash_wheel %>%
+  filter(wheel == "Professor Trash Wheel") %>%
+  summarise(total_weight = sum(weight_tons, na.rm = TRUE))
+```
+
+The total weight of trash collected by Professor Trash Wheel is `r round(prof_total_weight$total_weight, 1)` tons.
+
+```{r Total cigarette butts collected by Gwynnda in June 2022}
+gwynnda_butts_2022 <- trash_wheel %>%
+  filter(wheel == "Gwynnda Trash Wheel", year == 2022, month == "June") %>%
+  summarise(total_butts = sum(cigarette_butts, na.rm = TRUE))
+```
+
+In June 2022, Gwynnda collected a total of `r gwynnda_butts_2022$total_butts` cigarette butts.
