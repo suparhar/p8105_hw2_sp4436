@@ -142,7 +142,7 @@ table(trash_wheel$wheel)
 
 ```
 
-The combined Trash Wheel dataset contains `r nrow(trash_wheel)` observations and `r ncol(trash_wheel)` variables. It spans from `r min(trash_wheel$year, na.rm = TRUE)` to `r max(trash_wheel$year, na.rm = TRUE)`. Key variables include `weight_tons`, `plastic_bottles`, `cigarette_butts`, and `homes_powered`, as well as the `wheel` variable that identifies whether the trash was collected by Mr., Professor, or Gwynnda.
+The combined Trash Wheel dataset contains `r nrow(trash_wheel)` observations and `r ncol(trash_wheel)` variables. The years range from 2014 to 2025. The key variables are `weight_tons`, `plastic_bottles`, `cigarette_butts`, and `homes_powered`, and the `wheel` variable that tells us who the trash was collected by.
 
 ```{r Total weight of trash collected by Professor Trash Wheel}
 prof_total_weight <- trash_wheel %>%
@@ -159,3 +159,157 @@ gwynnda_butts_2022 <- trash_wheel %>%
 ```
 
 In June 2022, Gwynnda collected a total of `r gwynnda_butts_2022$total_butts` cigarette butts.
+
+```{r Problem 3}
+#Packages needed for this problem no need to run if working through entire code
+library(tidyverse)
+library(janitor)
+library(readr)
+
+# Clean zip code dataset
+zip_codes = read_csv("zillow_data/Zip Codes.csv") %>%
+  clean_names() %>%
+  rename(
+    zip = zip_code,
+    borough = county,
+    neighborhood = neighborhood
+  ) %>%
+  select(zip, borough, neighborhood)
+
+#Check the names of the boroughs
+unique(zip_codes$borough)
+
+#Rename buroughs
+zip_codes = zip_codes %>%
+  mutate(
+    borough = recode(
+      borough,
+      "Kings" = "Brooklyn",
+      "New York" = "Manhattan",
+      "Richmond" = "Staten Island"
+    )
+  )
+
+#Import and clean zillow data
+zori = read_csv("zillow_data/Zip_zori_uc_sfrcondomfr_sm_month_NYC.csv") %>%
+  clean_names()
+
+#Check the names of columns to help with mutate and pivot
+colnames(zori)
+
+zori_tidy = zori %>%
+  rename(zip = region_name) %>% 
+  pivot_longer(
+    cols = starts_with("x"), #select all the date columns bc they start with x
+    names_to = "date",
+    values_to = "zori"
+  ) %>%
+  mutate(
+    date = str_remove(date, "^x"),
+    year = as.integer(str_sub(date, 1, 4)),
+    month = as.integer(str_sub(date, 6, 7)),
+    month = month.name[month]
+  ) %>%
+  select(zip, year, month, zori)
+
+#Check to see if any zipcode is duplicated
+zip_codes %>%
+  count(zip) %>%
+  filter(n > 1)
+
+#Remove duplicates
+zip_codes = zip_codes %>%
+  distinct(zip, .keep_all = TRUE)
+
+#Merge with Zillow tidy data
+zori_merged = zori_tidy %>%
+  left_join(zip_codes, by = "zip") %>%
+  relocate(borough, neighborhood, .after = zip)
+
+#Describe the datasest
+n_obs = nrow(zori_merged)
+n_zip = n_distinct(zori_merged$zip)
+n_neigh = n_distinct(zori_merged$neighborhood)
+n_obs; n_zip; n_neigh
+```
+
+The final dataset contains `r n_obs` observations, covering `r n_zip` unique ZIP codes and `r n_neigh` unique neighborhoods across New York City.
+
+```{r Missing Zips}
+#Make sure both have consistent character type
+zip_codes <- zip_codes %>% mutate(zip = as.character(zip))
+zori_tidy <- zori_tidy %>% mutate(zip = as.character(zip))
+
+#Find ZIPs that are in zip_codes but missing from Zillow
+missing_zips <- anti_join(zip_codes, zori_tidy %>% distinct(zip), by = "zip")
+
+#View results
+missing_zips
+
+#Total number missing
+n_missing <- nrow(missing_zips)
+
+#Count by borough
+missing_by_boro <- missing_zips %>%
+  count(borough) %>%
+  arrange(desc(n))
+
+n_missing
+missing_by_boro
+
+#Visualize
+library(ggplot2)
+library(forcats)
+
+missing_zips %>%
+  count(borough) %>%
+  ggplot(aes(x = fct_reorder(borough, n), y = n, fill = borough)) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  labs(
+    title = "ZIP codes in metadata but missing from Zillow rent data",
+    x = "Borough",
+    y = "Number of Missing ZIP Codes"
+  )
+
+#Select one or two per borough for discussion
+examples_missing <- missing_zips %>%
+  group_by(borough) %>%
+  slice_head(n = 2) %>%
+  ungroup()
+
+examples_missing
+```
+There are `r n_missing` ZIP codes in the metadata file that do not appear in Zillow’s rental dataset. The number of missing ZIPs varies by borough, with the largest concentration in Manhattan.
+For example, ZIP 10464 (Southeast Bronx), 11224 (Southern Brooklyn), 10020 (Chelsea and Clinton, Manhattan), 11004 (Southeast Queens), and 10307 (South Shore, Staten Island) are included in the metadata but not in Zillow. These ZIP codes might be excluded because they have limited rental housing, are  commercial or industrial areas, or have too few rental transactions for Zillow.
+
+```{r COVID-19 Analysis}
+#Only have 2020 and 2021
+covid_drop = zori_merged %>%
+  filter(month == "January", year %in% c(2020, 2021)) %>%
+  select(zip, borough, neighborhood, year, zori)
+
+#Put 2020 and 2021 next to each other 
+covid_drop_wide = covid_drop %>%
+  pivot_wider(
+    names_from = year,
+    values_from = zori,
+    names_prefix = "zori_"
+  )
+
+#Compute drop and sort
+covid_drop_wide = covid_drop_wide %>%
+  mutate(
+    drop = zori_2021 - zori_2020
+  ) %>%
+  arrange(drop) %>%
+  slice_head(n = 10)
+
+covid_drop_wide
+```
+
+The table below shows the 10 ZIP codes with the largest decline in rental prices between January 2020 and January 2021:
+
+```{r Table for drop}
+covid_drop_wide
+```
