@@ -79,5 +79,54 @@ The `snp` dataset contains monthly closing values of the S&P stock index from 19
 
 The `unemployment` dataset includes monthly unemployment rates from 1948 to 2015, with `r nrow(unemployment)` rows and `r ncol(unemployment)` columns, covering the years `r min(unemployment$year)` through `r max(unemployment$year)`.
 
-After merging, the combined dataset contains `r nrow(merged_data)` rows and `r ncol(merged_data)` columns. Each row corresponds to a unique year–month, and the variables include political party composition, the president’s party, S&P closing values, and unemployment rates. The merged dataset spans the years `r min(merged_data$year)` through `r max(merged_data$year)`.
+After merging, the combined dataset contains `r nrow(merged_data)` rows and `r ncol(merged_data)` columns. Each row corresponds to a unique year–month, and the variables include political party, the president’s party, S&P closing values, and unemployment rates. The merged dataset spans the years `r min(merged_data$year)` through `r max(merged_data$year)`.
+
+```{r Problem 2}
+#load packages
+library(readxl)
+library(janitor)
+
+#Clean Mr trash
+mr_trash <- read_excel(
+  "202409 Trash Wheel Collection Data.xlsx",
+  sheet = "Mr. Trash Wheel",
+  skip = 1
+) %>%
+  clean_names() %>%
+  drop_na(dumpster) %>%
+  select(-starts_with("...")) %>%   # remove extra empty columns
+  mutate(
+    sports_balls = as.integer(round(sports_balls, 0)), 
+    wheel = "Mr. Trash Wheel"
+  )
+
+# Clean Professor Trash Wheel
+prof_trash <- read_excel(
+  "202409 Trash Wheel Collection Data.xlsx",
+  sheet = "Professor Trash Wheel",
+  skip = 1
+) %>%
+  clean_names() %>%
+  drop_na(dumpster) %>%
+  select(-starts_with("...")) %>%
+  mutate(
+    wheel = "Professor Trash Wheel"
+  )
+
+# Clean Gwynnda Trash Wheel
+gwynnda_trash <- read_excel(
+  "202409 Trash Wheel Collection Data.xlsx",
+  sheet = "Gwynnda Trash Wheel",
+  skip = 1
+) %>%
+  clean_names() %>%
+  drop_na(dumpster) %>%
+  select(-starts_with("...")) %>%
+  mutate(
+    wheel = "Gwynnda Trash Wheel"
+  )
+
+
+
+```
 
